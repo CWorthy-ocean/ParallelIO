@@ -2,7 +2,7 @@
 ## Ed Hartnett 8/16/17
 
 # Initialize autoconf and automake.
-AC_INIT(pio, 2.6.9)
+AC_INIT(pio, 2.7.0)
 AC_CONFIG_SRCDIR(src/clib/pio_darray.c)
 AM_INIT_AUTOMAKE([foreign serial-tests])
 
@@ -10,16 +10,16 @@ AM_INIT_AUTOMAKE([foreign serial-tests])
 # The PIO version, again. Use AC_SUBST for pio_meta.h and
 # AC_DEFINE_UNQUOTED for config.h.
 AC_SUBST([PIO_VERSION_MAJOR]) PIO_VERSION_MAJOR=2
-AC_SUBST([PIO_VERSION_MINOR]) PIO_VERSION_MINOR=6
-AC_SUBST([PIO_VERSION_PATCH]) PIO_VERSION_PATCH=9
+AC_SUBST([PIO_VERSION_MINOR]) PIO_VERSION_MINOR=7
+AC_SUBST([PIO_VERSION_PATCH]) PIO_VERSION_PATCH=0
 AC_DEFINE_UNQUOTED([PIO_VERSION_MAJOR], [$PIO_VERSION_MAJOR], [PIO major version])
 AC_DEFINE_UNQUOTED([PIO_VERSION_MINOR], [$PIO_VERSION_MINOR], [PIO minor version])
 AC_DEFINE_UNQUOTED([PIO_VERSION_PATCH], [$PIO_VERSION_PATCH], [PIO patch version])
 
 # Once more for the documentation.
 AC_SUBST([VERSION_MAJOR], [2])
-AC_SUBST([VERSION_MINOR], [6])
-AC_SUBST([VERSION_PATCH], [9])
+AC_SUBST([VERSION_MINOR], [7])
+AC_SUBST([VERSION_PATCH], [0])
 
 
 # The m4 directory holds macros for autoconf.
@@ -181,6 +181,24 @@ AC_ARG_ENABLE([pnetcdf],
 test "x$enable_pnetcdf" = xno || enable_pnetcdf=yes
 AC_MSG_RESULT([$enable_pnetcdf])
 AM_CONDITIONAL(BUILD_PNETCDF, [test "x$enable_pnetcdf" = xyes])
+
+# Does the user want to enable gdal?
+AC_MSG_CHECKING([whether gdal is to be used])
+AC_ARG_ENABLE([gdal],
+              [AS_HELP_STRING([--enable-gdal],
+                              [Enable gdal use.])])
+test "x$enable_gdal" = xyes || enable_gdal=no
+AC_MSG_RESULT([$enable_gdal])
+AM_CONDITIONAL(PIO_ENABLE_GDAL, [test "x$enable_gdal" = xyes])
+#Do we have gdal
+if test "x$enable_gdal" = xyes; then
+  AC_CHECK_LIB([gdal], [OGR_Fld_GetType], [], [])
+  if test "x$ac_cv_lib_gdal_OGR_Fld_GetType" = xyes ; then
+     AC_DEFINE([PIO_ENABLE_GDAL], [1], [gdal library available])
+   else
+     AC_MSG_ERROR([GDAL not found. Set CPPFLAGS/LDFLAGS or remove --enable-gdal.])
+  fi
+fi
 
 # Does the user want to build documentation?
 AC_MSG_CHECKING([whether documentation should be build (requires doxygen)])
@@ -440,6 +458,7 @@ AX_SET_META([PIO_HAS_PAR_FILTERS], [$have_par_filters],[yes])
 AX_SET_META([PIO_HAS_NETCDF4], [$have_netcdf4],[yes])
 AX_SET_META([PIO_HAS_NETCDF4_PAR], [$have_netcdf_par],[yes])
 AX_SET_META([PIO_HAS_NETCDF_INTEGRATION], [$enable_netcdf_integration],[yes])
+AX_SET_META([PIO_HAS_GDAL],[$enable_gdal],[yes])
 
 # Create output variables from various shell variables, for use in
 # generating libpio.settings.
@@ -460,6 +479,7 @@ AC_SUBST([HAS_NETCDF4], [$have_netcdf4])
 AC_SUBST([HAS_NETCDF4_PAR], [$have_netcdf_par])
 AC_SUBST([HAS_NETCDF_INTEGRATION], [$enable_netcdf_integration])
 AC_SUBST([HAS_PIO_FORTRAN], [$enable_fortran])
+AC_SUBST([PIO_USE_GDAL], [$enable_gdal])
 
 # Create the build summary file.
 AC_CONFIG_FILES([libpio.settings
