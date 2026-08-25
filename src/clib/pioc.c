@@ -1210,7 +1210,9 @@ PIOc_InitDecomp_bc_flags(int iosysid, int pio_type, int ndims, const int *gdimle
     iosystem_desc_t *ios;
     int n, i, maplen = 1;
     PIO_Offset prod[ndims], loc[ndims];
+    PIO_Offset *compmap;
     int rearr = PIO_REARR_SUBSET;
+    int ret;
 
     PLOG((1, "PIOc_InitDecomp_bc_flags iosysid = %d pio_type = %d ndims = %d force_nofill = %d",
           iosysid, pio_type, ndims, force_nofill));
@@ -1233,8 +1235,13 @@ PIOc_InitDecomp_bc_flags(int iosysid, int pio_type, int ndims, const int *gdimle
     for (i = 0; i < ndims; i++)
         maplen *= count[i];
 
-    /* Get storage for the compmap. */
-    PIO_Offset compmap[maplen];
+    /* Get storage for the compmap. Heap-allocated rather than a
+     * stack VLA: for 3D decompositions with many vertical levels and/or
+     * few tasks (large per-task tiles), maplen can run into the
+     * millions, which previously overflowed the (typically 8MB) stack
+     * and segfaulted. */
+    if (!(compmap = malloc(sizeof(PIO_Offset) * maplen)))
+        return pio_err(ios, NULL, PIO_ENOMEM, __FILE__, __LINE__);
 
     /* Find the compmap. */
     prod[ndims - 1] = 1;
@@ -1259,8 +1266,12 @@ PIOc_InitDecomp_bc_flags(int iosysid, int pio_type, int ndims, const int *gdimle
         }
     }
 
-    return PIOc_InitDecomp_flags(iosysid, pio_type, ndims, gdimlen, maplen, compmap, ioidp,
-                                 &rearr, NULL, NULL, force_nofill);
+    ret = PIOc_InitDecomp_flags(iosysid, pio_type, ndims, gdimlen, maplen, compmap, ioidp,
+                                &rearr, NULL, NULL, force_nofill);
+
+    free(compmap);
+
+    return ret;
 }
 
 /**
